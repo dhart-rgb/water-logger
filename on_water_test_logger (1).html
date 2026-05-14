@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>On-Water Test Logger</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    min-height: 100vh;
+    padding: 12px;
+    padding-bottom: 80px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 4px 0 12px;
+    text-align: center;
+  }
+  .add-run {
+    width: 100%;
+    padding: 14px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .add-run:active { background: #1d4ed8; }
+  .run-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+    border: 1px solid #334155;
+  }
+  .run-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .sn-input {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 1rem;
+    background: #0f172a;
+    color: #f1f5f9;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+  .sn-input::placeholder { color: #64748b; }
+  .delete-btn {
+    background: #7f1d1d;
+    color: #fecaca;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .date-row {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+  .event-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .event-btn {
+    background: #334155;
+    color: #f1f5f9;
+    border: 1px solid #475569;
+    border-radius: 10px;
+    padding: 12px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+  }
+  .event-btn:active { transform: scale(0.97); }
+  .event-btn.logged {
+    background: #064e3b;
+    border-color: #10b981;
+  }
+  .event-label {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .event-btn.logged .event-label { color: #6ee7b7; }
+  .event-time {
+    font-size: 1.1rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .event-time.empty { color: #64748b; font-size: 0.85rem; font-family: inherit; }
+  .on-water-total {
+    margin-top: 10px;
+    padding: 8px;
+    background: #0c4a6e;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #bae6fd;
+  }
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 12px;
+    background: #0f172a;
+    border-top: 1px solid #334155;
+    display: flex;
+    gap: 8px;
+  }
+  .footer button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .export-btn { background: #16a34a; color: white; }
+  .clear-btn { background: #475569; color: white; }
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+  .modal.open { display: flex; }
+  .modal-content {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-content h2 { margin: 0 0 10px; font-size: 1.1rem; }
+  .modal-content textarea {
+    flex: 1;
+    width: 100%;
+    min-height: 300px;
+    background: #0f172a;
+    color: #f1f5f9;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.8rem;
+    resize: vertical;
+  }
+  .modal-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .copy-btn { background: #2563eb; color: white; }
+  .close-btn { background: #475569; color: white; }
+  .empty-state {
+    text-align: center;
+    color: #64748b;
+    padding: 40px 20px;
+    font-size: 0.9rem;
+  }
+  .long-press-hint {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<h1>On-Water Test Logger</h1>
+
+<button class="add-run" onclick="addRun()">+ New Vehicle Run</button>
+
+<div id="runs"></div>
+
+<div id="empty" class="empty-state">
+  Tap <strong>+ New Vehicle Run</strong> to start logging.<br><br>
+  Tap any event button to timestamp it.<br>
+  Long-press to clear/re-stamp.
+</div>
+
+<div class="footer">
+  <button class="clear-btn" onclick="clearAll()">Clear All</button>
+  <button class="export-btn" onclick="exportTable()">Export</button>
+</div>
+
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <h2>Confluence Markdown</h2>
+    <textarea id="output" readonly></textarea>
+    <div class="modal-actions">
+      <button class="copy-btn" onclick="copyOutput()">Copy</button>
+      <button class="close-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal">
+  <div class="modal-content" style="max-width: 360px;">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmMsg" style="color:#cbd5e1; margin:0 0 12px;"></p>
+    <div class="modal-actions">
+      <button class="close-btn" onclick="resolveConfirm(false)">Cancel</button>
+      <button style="background:#dc2626; color:white;" onclick="resolveConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const EVENTS = [
+  { key: 'startPretest',  label: 'Start Pretest' },
+  { key: 'finishPretest', label: 'Finish Pretest' },
+  { key: 'ballastStart',  label: 'Ballast Start' },
+  { key: 'ballastEnd',    label: 'Ballast End' },
+  { key: 'offDock',       label: 'Off Dock' },
+  { key: 'mission1Start', label: 'Mission 1 Start' },
+  { key: 'mission4End',   label: 'Mission 4 End' },
+  { key: 'backOnDock',    label: 'Back On Dock' },
+  { key: 'startPostDive', label: 'Start Post Dive' },
+  { key: 'endPostDive',   label: 'End Post Dive' },
+];
+
+let runs = [];
+let confirmResolver = null;
+
+function askConfirm(msg) {
+  return new Promise(resolve => {
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('open');
+    confirmResolver = resolve;
+  });
+}
+
+function resolveConfirm(value) {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmResolver) {
+    confirmResolver(value);
+    confirmResolver = null;
+  }
+}
+
+async function loadData() {
+  try {
+    const result = await window.storage.get('runs');
+    if (result && result.value) {
+      runs = JSON.parse(result.value);
+    }
+  } catch (e) {
+    runs = [];
+  }
+  render();
+}
+
+async function saveData() {
+  try {
+    await window.storage.set('runs', JSON.stringify(runs));
+  } catch (e) {
+    console.error('Save failed', e);
+  }
+}
+
+function todayStr() {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function fmtTime(hhmm) {
+  if (!hhmm) return '';
+  return hhmm.slice(0,2) + ':' + hhmm.slice(2);
+}
+
+function toMin(hhmm) {
+  return parseInt(hhmm.slice(0,2)) * 60 + parseInt(hhmm.slice(2));
+}
+
+function fmtDuration(mins) {
+  if (mins < 0) mins += 24*60;
+  return `${Math.floor(mins/60)}h ${mins%60}min`;
+}
+
+function addRun() {
+  runs.push({
+    id: Date.now(),
+    sn: '',
+    date: todayStr(),
+    times: {}
+  });
+  saveData();
+  render();
+}
+
+async function deleteRun(id) {
+  const ok = await askConfirm('Delete this run?');
+  if (!ok) return;
+  runs = runs.filter(r => r.id !== id);
+  saveData();
+  render();
+}
+
+function updateSN(id, value) {
+  const run = runs.find(r => r.id === id);
+  if (run) {
+    run.sn = value;
+    saveData();
+  }
+}
+
+function stampEvent(id, key) {
+  const run = runs.find(r => r.id === id);
+  if (!run) return;
+  run.times[key] = nowHHMM();
+  saveData();
+  render();
+}
+
+async function clearEvent(id, key) {
+  const run = runs.find(r => r.id === id);
+  if (!run) return;
+  const ok = await askConfirm('Clear this timestamp?');
+  if (!ok) return;
+  delete run.times[key];
+  saveData();
+  render();
+}
+
+async function clearAll() {
+  const ok = await askConfirm('Clear ALL runs? This cannot be undone.');
+  if (!ok) return;
+  runs = [];
+  saveData();
+  render();
+}
+
+function render() {
+  const container = document.getElementById('runs');
+  const empty = document.getElementById('empty');
+  container.innerHTML = '';
+  empty.style.display = runs.length === 0 ? 'block' : 'none';
+
+  runs.forEach(run => {
+    const card = document.createElement('div');
+    card.className = 'run-card';
+
+    const onWaterTotal = (run.times.offDock && run.times.backOnDock)
+      ? fmtDuration(toMin(run.times.backOnDock) - toMin(run.times.offDock))
+      : null;
+
+    card.innerHTML = `
+      <div class="run-header">
+        <input class="sn-input" type="text" inputmode="text" autocapitalize="characters"
+               placeholder="SN / vehicle ID" value="${run.sn.replace(/"/g,'&quot;')}"
+               onchange="updateSN(${run.id}, this.value)">
+        <button class="delete-btn" onclick="deleteRun(${run.id})">✕</button>
+      </div>
+      <div class="date-row">${run.date}</div>
+      <div class="event-grid">
+        ${EVENTS.map(ev => {
+          const t = run.times[ev.key];
+          const logged = t ? 'logged' : '';
+          const display = t ? fmtTime(t) : 'TAP';
+          const cls = t ? 'event-time' : 'event-time empty';
+          return `
+            <button class="event-btn ${logged}"
+                    onclick="stampEvent(${run.id}, '${ev.key}')"
+                    oncontextmenu="event.preventDefault(); clearEvent(${run.id}, '${ev.key}')">
+              <div class="event-label">${ev.label}</div>
+              <div class="${cls}">${display}</div>
+              ${t ? '<div class="long-press-hint">long-press to clear</div>' : ''}
+            </button>
+          `;
+        }).join('')}
+      </div>
+      ${onWaterTotal ? `<div class="on-water-total">On-water: <strong>${onWaterTotal}</strong></div>` : ''}
+    `;
+    container.appendChild(card);
+  });
+
+  // Long-press handlers for mobile
+  document.querySelectorAll('.event-btn').forEach(btn => {
+    let pressTimer;
+    btn.addEventListener('touchstart', (e) => {
+      pressTimer = setTimeout(() => {
+        btn.dataset.longPressed = 'true';
+        const onContext = btn.getAttribute('oncontextmenu');
+        // Trigger the clear via the inline handler logic
+        const evt = new Event('contextmenu');
+        btn.dispatchEvent(evt);
+      }, 600);
+    });
+    btn.addEventListener('touchend', () => clearTimeout(pressTimer));
+    btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    btn.addEventListener('click', (e) => {
+      if (btn.dataset.longPressed === 'true') {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.dataset.longPressed = 'false';
+      }
+    }, true);
+  });
+}
+
+function exportTable() {
+  if (runs.length === 0) {
+    alert('No runs to export.');
+    return;
+  }
+
+  let md = '| Date | SN | Start Pretest | Finish Pretest | Ballast Start | Ballast End | Off Dock | Mission 1 Start | Mission 4 End | Back On Dock | Start Post Dive | End Post Dive | On-Water Time |\n';
+  md +=   '|------|-----|---------------|----------------|---------------|-------------|----------|-----------------|---------------|--------------|-----------------|---------------|---------------|\n';
+
+  runs.forEach(run => {
+    const t = run.times;
+    const onWater = (t.offDock && t.backOnDock)
+      ? fmtDuration(toMin(t.backOnDock) - toMin(t.offDock))
+      : '—';
+    md += `| ${run.date} | ${run.sn || '—'} | ${fmtTime(t.startPretest) || '—'} | ${fmtTime(t.finishPretest) || '—'} | ${fmtTime(t.ballastStart) || '—'} | ${fmtTime(t.ballastEnd) || '—'} | ${fmtTime(t.offDock) || '—'} | ${fmtTime(t.mission1Start) || '—'} | ${fmtTime(t.mission4End) || '—'} | ${fmtTime(t.backOnDock) || '—'} | ${fmtTime(t.startPostDive) || '—'} | ${fmtTime(t.endPostDive) || '—'} | ${onWater} |\n`;
+  });
+
+  document.getElementById('output').value = md;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function copyOutput() {
+  const ta = document.getElementById('output');
+  ta.select();
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    const btn = document.querySelector('.copy-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  } catch (e) {
+    document.execCommand('copy');
+  }
+}
+
+loadData();
+</script>
+
+</body>
+</html>
